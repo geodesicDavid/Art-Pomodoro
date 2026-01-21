@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { motion } from 'framer-motion';
 import { useTimer } from './hooks/useTimer';
 import { useArticApi } from './hooks/useArticApi';
 import { useSound } from './hooks/useSound';
@@ -27,6 +28,8 @@ function App() {
 
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [isShortViewport, setIsShortViewport] = useState(false);
+  const [isHoveringControls, setIsHoveringControls] = useState(false);
 
   // Audio settings with persistence
   const [audioEnabled, setAudioEnabled] = useState(() => {
@@ -37,6 +40,17 @@ function App() {
   useEffect(() => {
     localStorage.setItem('art_pomodoro_audio_enabled', JSON.stringify(audioEnabled));
   }, [audioEnabled]);
+
+  // Detect short viewport
+  useEffect(() => {
+    const checkViewportHeight = () => {
+      setIsShortViewport(window.innerHeight < 600);
+    };
+
+    checkViewportHeight();
+    window.addEventListener('resize', checkViewportHeight);
+    return () => window.removeEventListener('resize', checkViewportHeight);
+  }, []);
 
   // Ref for previous session count to detect changes
   const prevSessionCount = useRef(sessionCount);
@@ -79,7 +93,7 @@ function App() {
     <div className="relative min-h-screen w-full flex items-center justify-center overflow-hidden bg-zinc-950 text-white font-sans selection:bg-emerald-500/30">
 
       {/* Background Artwork */}
-      <ArtworkDisplay artwork={currentArtwork} isLoading={isLoading} />
+      <ArtworkDisplay artwork={currentArtwork} isLoading={isLoading} isActive={isActive} isShortViewport={isShortViewport} />
 
       {/* Main UI Container */}
       <div className={`relative z-10 flex flex-col items-center gap-8 transition-opacity duration-300 ${isFullscreen && isActive ? 'opacity-0 hover:opacity-100' : 'opacity-100'}`}>
@@ -102,15 +116,44 @@ function App() {
         />
 
         {/* Controls */}
-        <Controls
-          isActive={isActive}
-          onToggle={handleToggleTimer}
-          onReset={resetTimer}
-          onSkip={skipSession}
-          onSettings={() => setIsSettingsOpen(true)}
-          isFullscreen={isFullscreen}
-          onToggleFullscreen={toggleFullscreen}
-        />
+        <div
+          className={`transition-opacity duration-300 p-8 -m-8 ${
+            isShortViewport
+              ? isHoveringControls
+                ? 'opacity-100'
+                : 'opacity-0'
+              : 'opacity-100'
+          }`}
+          onMouseEnter={() => setIsHoveringControls(true)}
+          onMouseLeave={() => setIsHoveringControls(false)}
+        >
+          <Controls
+            isActive={isActive}
+            onToggle={handleToggleTimer}
+            onReset={resetTimer}
+            onSkip={skipSession}
+            onSettings={() => setIsSettingsOpen(true)}
+            isFullscreen={isFullscreen}
+            onToggleFullscreen={toggleFullscreen}
+          />
+        </div>
+
+        {/* Hover hint for short viewport */}
+        {isShortViewport && !isHoveringControls && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            // className="fixed left-1/2 -translate-x-1/2 text-white/40 text-[10px] flex items-center gap-1 pointer-events-none"
+            //style={{ bottom: '12px' }}
+            className="fixed text-white/40 text-[10px] flex items-center gap-1 pointer-events-none"
+            style={{ bottom: '12px', left: 'calc(50% - 58px)' }} 
+          >
+            <svg className="w-3 h-3 animate-bounce" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+            </svg>
+            <span>Hover for controls</span>
+          </motion.div>
+        )}
       </div>
 
       {/* Settings Modal */}

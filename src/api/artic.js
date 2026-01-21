@@ -3,7 +3,7 @@ import axios from 'axios';
 const BASE_URL = 'https://api.artic.edu/api/v1';
 
 // Fields to retrieve to minimize payload
-const FIELDS = 'id,title,artist_display,image_id,date_display,medium_display,place_of_origin';
+const FIELDS = 'id,title,artist_display,image_id,date_display,medium_display,place_of_origin,width,height';
 
 export const getImageUrl = (imageId, size = '843,') => {
     if (!imageId) return null;

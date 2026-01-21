@@ -1,13 +1,87 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { getImageUrl } from '../api/artic';
 
-export const ArtworkDisplay = ({ artwork, isLoading }) => {
+export const ArtworkDisplay = ({ artwork, isLoading, isActive, isShortViewport }) => {
     if (!artwork && !isLoading) return <div className="absolute inset-0 bg-zinc-900" />;
 
     const imageUrl = artwork ? getImageUrl(artwork.image_id) : null;
     const title = artwork ? artwork.title : '';
     const artist = artwork ? artwork.artist_display : '';
+
+    // Determine animation direction based on aspect ratios
+    const animationVariants = useMemo(() => {
+        if (!artwork || !artwork.width || !artwork.height) {
+            // Default fallback if no dimensions: slight zoom
+            return {
+                initial: { opacity: 0, scale: 1.1 },
+                animate: {
+                    opacity: 1,
+                    scale: isActive ? 1.05 : 1,
+                    transition: { duration: 1.5, ease: "easeInOut" }
+                },
+            };
+        }
+
+        const artAspect = artwork.width / artwork.height;
+
+        const isPanoramic = artAspect > 1.2;
+        const isTall = artAspect < 0.8;
+
+        if (isTall) {
+            // Tall artwork: Pan Y (top to bottom)
+            return {
+                animate: {
+                    objectPosition: isActive ? ["50% 0%", "50% 100%"] : "50% 50%",
+                    opacity: 1,
+                    transition: {
+                        objectPosition: {
+                            duration: 10, // Faster for testing
+                            ease: "linear",
+                            repeat: Infinity,
+                            repeatType: "reverse"
+                        },
+                        opacity: { duration: 1.5 }
+                    }
+                }
+            };
+        } else if (isPanoramic) {
+            // Wide artwork: Pan X (right to left)
+            return {
+                animate: {
+                    objectPosition: isActive ? ["100% 50%", "0% 50%"] : "50% 50%",
+                    opacity: 1,
+                    transition: {
+                        objectPosition: {
+                            duration: 10, // Faster for testing
+                            ease: "linear",
+                            repeat: Infinity,
+                            repeatType: "reverse"
+                        },
+                        opacity: { duration: 1.5 }
+                    }
+                }
+            };
+        }
+
+        // Square-ish: Gentle Zoom
+        return {
+            animate: {
+                scale: isActive ? [1, 1.1] : 1,
+                opacity: 1,
+                transition: {
+                    scale: {
+                        duration: 5, // Faster for testing
+                        ease: "linear",
+                        repeat: Infinity,
+                        repeatType: "reverse"
+                    },
+                    opacity: { duration: 1.5 }
+                }
+            }
+        };
+
+    }, [artwork, isActive]);
 
     return (
         <div className="absolute inset-0 z-0 overflow-hidden bg-black">
@@ -15,16 +89,18 @@ export const ArtworkDisplay = ({ artwork, isLoading }) => {
                 {imageUrl && (
                     <motion.div
                         key={artwork.id}
-                        initial={{ opacity: 0, scale: 1.05 }}
-                        animate={{ opacity: 1, scale: 1 }}
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
-                        transition={{ duration: 1.5, ease: "easeInOut" }}
+                        transition={{ opacity: { duration: 1.5, ease: "easeInOut" } }}
                         className="absolute inset-0"
                     >
-                        <img
+                        <motion.img
                             src={imageUrl}
                             alt={title}
                             className="w-full h-full object-cover opacity-60"
+                            animate={animationVariants.animate}
+                            transition={animationVariants.animate.transition}
                         />
                         <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-transparent to-black/70" />
                     </motion.div>
